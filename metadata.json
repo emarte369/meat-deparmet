@@ -1,0 +1,5 @@
+{
+  "name": "Meat Department",
+  "description": "A comprehensive financial management tool for tracking meat inventory, sellers, invoices, sales, and generating AI-powered reports.",
+  "requestFramePermissions": []
+}
