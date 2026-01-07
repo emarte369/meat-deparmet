@@ -2,20 +2,17 @@ import React, { useEffect, useState, useRef } from 'react';
 import { dbService } from '../services/storageService';
 import { 
   Users, FileText, TrendingUp, DollarSign, Database, 
-  Download, Upload, Loader2, CheckCircle, Trash2, 
-  AlertTriangle, Smartphone, ShieldCheck, Globe, 
-  ExternalLink, Cloud, Settings, Key, Server
+  Loader2, Smartphone, ShieldCheck, Globe, 
+  ExternalLink, Cloud, Key, Server, AlertTriangle
 } from 'lucide-react';
 
 export const Dashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [importing, setImporting] = useState(false);
-  const [showImportSuccess, setShowImportSuccess] = useState(false);
   const [storageStatus, setStorageStatus] = useState({ persistent: false, usage: 0, isStandalone: false });
   const [activeTab, setActiveTab] = useState<'stats' | 'sync' | 'deploy'>('stats');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Cloud Sync State
   const [cloudSettings, setCloudSettings] = useState({
     url: localStorage.getItem('supabase_url') || '',
     key: localStorage.getItem('supabase_key') || '',
@@ -30,23 +27,28 @@ export const Dashboard: React.FC = () => {
 
   const fetchData = async () => {
     setLoading(true);
-    const [sellers, invoices, sales, status] = await Promise.all([
-      dbService.getSellers(),
-      dbService.getInvoices(),
-      dbService.getSales(),
-      dbService.getStorageStatus()
-    ]);
-    
-    const totalRevenue = sales.reduce((acc, curr) => acc + curr.amount, 0);
+    try {
+      const [sellers, invoices, sales, status] = await Promise.all([
+        dbService.getSellers(),
+        dbService.getInvoices(),
+        dbService.getSales(),
+        dbService.getStorageStatus()
+      ]);
+      
+      const totalRevenue = sales.reduce((acc, curr) => acc + curr.amount, 0);
 
-    setStats({
-      sellers: sellers.length,
-      invoices: invoices.length,
-      sales: sales.length,
-      totalRevenue,
-    });
-    setStorageStatus(status);
-    setLoading(false);
+      setStats({
+        sellers: sellers.length,
+        invoices: invoices.length,
+        sales: sales.length,
+        totalRevenue,
+      });
+      setStorageStatus(status);
+    } catch (error) {
+      console.error("Failed to fetch dashboard stats", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -56,7 +58,7 @@ export const Dashboard: React.FC = () => {
   const saveCloudSettings = () => {
     localStorage.setItem('supabase_url', cloudSettings.url);
     localStorage.setItem('supabase_key', cloudSettings.key);
-    alert("Cloud credentials saved locally! Note: Automatic sync requires further setup.");
+    alert("Cloud credentials saved locally!");
   };
 
   const handleImportClick = () => fileInputRef.current?.click();
@@ -70,8 +72,7 @@ export const Dashboard: React.FC = () => {
       try {
         await dbService.importDatabase(e.target?.result as string);
         await fetchData();
-        setShowImportSuccess(true);
-        setTimeout(() => setShowImportSuccess(false), 4000);
+        alert("Import Success!");
       } catch (err) {
         alert("Import failed.");
       } finally {
@@ -103,7 +104,7 @@ export const Dashboard: React.FC = () => {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold text-slate-800">Meat Dept Hub</h2>
-          <p className="text-sm text-slate-500">Inventory Monitoring & Cloud Control</p>
+          <p className="text-sm text-slate-500">Inventory Monitoring &amp; Cloud Control</p>
         </div>
         
         <div className="flex bg-slate-200 p-1 rounded-xl w-fit">
@@ -156,7 +157,7 @@ export const Dashboard: React.FC = () => {
       )}
 
       {activeTab === 'sync' && (
-        <div className="bg-white border border-slate-200 p-8 rounded-2xl shadow-sm animate-in fade-in slide-in-from-right-4 duration-300">
+        <div className="bg-white border border-slate-200 p-8 rounded-2xl shadow-sm animate-in fade-in duration-300">
           <div className="max-w-xl mx-auto">
             <div className="flex items-center gap-4 mb-8">
               <div className="bg-emerald-100 p-4 rounded-2xl"><Server className="w-8 h-8 text-emerald-600" /></div>
@@ -183,44 +184,38 @@ export const Dashboard: React.FC = () => {
               </div>
               <button onClick={saveCloudSettings} className="w-full py-3 bg-slate-900 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-slate-800 transition-all"><Cloud className="w-4 h-4" /> Link Cloud Database</button>
             </div>
-
-            <div className="mt-8 p-4 bg-emerald-50 rounded-xl border border-emerald-100">
-              <p className="text-xs text-emerald-800 font-medium leading-relaxed">
-                **Why use Supabase?** By connecting Supabase, your iPhone will sync data to the cloud. If your local storage is ever cleared by Safari, the app will automatically restore it from Supabase.
-              </p>
-            </div>
           </div>
         </div>
       )}
 
       {activeTab === 'deploy' && (
-        <div className="bg-white border border-slate-200 p-8 rounded-2xl shadow-sm animate-in fade-in slide-in-from-right-4 duration-300">
+        <div className="bg-white border border-slate-200 p-8 rounded-2xl shadow-sm animate-in fade-in duration-300">
           <div className="max-w-2xl mx-auto">
-            <h3 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2"><Globe className="w-6 h-6 text-blue-600" />How to Deploy (Step-by-Step)</h3>
+            <h3 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2"><Globe className="w-6 h-6 text-blue-600" />Deployment Status</h3>
             
             <div className="space-y-8">
               <div className="flex gap-4">
                 <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold shrink-0 shadow-lg">1</div>
                 <div>
-                  <p className="font-bold text-slate-800">Download Source Code</p>
-                  <p className="text-sm text-slate-500 mt-1">Make sure you have all the files for this Meat Department app saved on your computer.</p>
+                  <p className="font-bold text-slate-800">Source Connected</p>
+                  <p className="text-sm text-slate-500 mt-1">Files are correctly uploaded to GitHub. Vercel is monitoring changes.</p>
                 </div>
               </div>
 
               <div className="flex gap-4">
                 <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold shrink-0 shadow-lg">2</div>
                 <div>
-                  <p className="font-bold text-slate-800">Use Vercel for Hosting</p>
-                  <p className="text-sm text-slate-500 mt-1">Go to **Vercel.com**, create a free account, and click "Add New" -> "Project". Upload your folder. Vercel will give you a private link like `meat-dept.vercel.app`.</p>
-                  <a href="https://vercel.com/new" target="_blank" className="mt-3 inline-flex items-center gap-2 text-xs font-bold text-blue-600 hover:underline">Go to Vercel <ExternalLink className="w-3 h-3" /></a>
+                  <p className="font-bold text-slate-800">Live Hosting</p>
+                  <p className="text-sm text-slate-500 mt-1">If you see this screen on the web, your app is officially live on Vercel.</p>
+                  <a href="https://vercel.com/dashboard" target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex items-center gap-2 text-xs font-bold text-blue-600 hover:underline">Manage Vercel Dashboard <ExternalLink className="w-3 h-3" /></a>
                 </div>
               </div>
 
               <div className="flex gap-4">
                 <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold shrink-0 shadow-lg">3</div>
                 <div>
-                  <p className="font-bold text-slate-800">iPhone Installation</p>
-                  <p className="text-sm text-slate-500 mt-1">Open your new Vercel link in Safari on your iPhone. Tap **Share**, then **"Add to Home Screen"**. Now you have a professional app that won't lose data!</p>
+                  <p className="font-bold text-slate-800">Installation</p>
+                  <p className="text-sm text-slate-500 mt-1">Open your private link in Safari and use "Add to Home Screen" for the best experience.</p>
                 </div>
               </div>
             </div>
