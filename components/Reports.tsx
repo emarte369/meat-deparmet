@@ -2,15 +2,21 @@ import React, { useState, useMemo } from 'react';
 import { dbService } from '../services/storageService';
 import { generateFinancialAnalysis } from '../services/aiService';
 import { ReportData, Invoice } from '../types';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { 
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
+  PieChart, Pie, Cell, Legend 
+} from 'recharts';
 import { 
   Calculator, Bot, Loader2, AlertCircle, FileText, 
-  Database, Cpu, ChevronUp, ChevronDown 
+  Database, Cpu, ChevronUp, ChevronDown, CalendarDays,
+  PieChart as PieChartIcon, TrendingDown
 } from 'lucide-react';
 
 type VendorSortField = 'name' | 'count' | 'amount';
 type InvoiceSortField = 'date' | 'description' | 'amount';
 type SortDirection = 'asc' | 'desc';
+
+const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316'];
 
 export const Reports: React.FC = () => {
   const [dateRange, setDateRange] = useState({
@@ -31,6 +37,38 @@ export const Reports: React.FC = () => {
   // Sorting State
   const [vendorSort, setVendorSort] = useState<{ field: VendorSortField; dir: SortDirection }>({ field: 'amount', dir: 'desc' });
   const [invoiceSort, setInvoiceSort] = useState<{ field: InvoiceSortField; dir: SortDirection }>({ field: 'date', dir: 'desc' });
+
+  const formatDate = (date: Date) => date.toISOString().split('T')[0];
+
+  const setQuickRange = (range: 'thisWeek' | 'lastWeek' | 'thisMonth' | 'lastMonth') => {
+    const today = new Date();
+    let start = new Date();
+    let end = new Date();
+
+    switch (range) {
+      case 'thisWeek':
+        start.setDate(today.getDate() - today.getDay()); // Sunday
+        end = today;
+        break;
+      case 'lastWeek':
+        start.setDate(today.getDate() - today.getDay() - 7); // Last Sunday
+        end.setDate(today.getDate() - today.getDay() - 1); // Last Saturday
+        break;
+      case 'thisMonth':
+        start = new Date(today.getFullYear(), today.getMonth(), 1);
+        end = today;
+        break;
+      case 'lastMonth':
+        start = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+        end = new Date(today.getFullYear(), today.getMonth(), 0);
+        break;
+    }
+
+    setDateRange({
+      start: formatDate(start),
+      end: formatDate(end)
+    });
+  };
 
   const calculateReport = async () => {
     if (!dateRange.start || !dateRange.end) return;
@@ -150,8 +188,28 @@ export const Reports: React.FC = () => {
       </div>
 
       <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-        <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-4">Report Configuration</h3>
-        <div className="flex flex-col md:flex-row items-end gap-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-4">
+          <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Report Configuration</h3>
+          <div className="flex flex-wrap gap-2">
+            {[
+              { id: 'thisWeek', label: 'This Week' },
+              { id: 'lastWeek', label: 'Last Week' },
+              { id: 'thisMonth', label: 'This Month' },
+              { id: 'lastMonth', label: 'Last Month' }
+            ].map((r) => (
+              <button
+                key={r.id}
+                onClick={() => setQuickRange(r.id as any)}
+                className="px-3 py-1.5 text-xs font-bold rounded-lg border border-slate-200 bg-slate-50 text-slate-600 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 transition-all flex items-center gap-1.5"
+              >
+                <CalendarDays className="w-3.5 h-3.5" />
+                {r.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        
+        <div className="flex flex-col md:flex-row items-end gap-4 border-t border-slate-100 pt-6">
           <div className="w-full md:w-auto">
             <label className="block text-xs font-medium text-slate-600 mb-1">Start Date</label>
             <input
@@ -223,8 +281,9 @@ export const Reports: React.FC = () => {
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
-                    <div className="px-6 py-4 border-b border-slate-200 bg-slate-50">
+                    <div className="px-6 py-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
                         <h3 className="font-bold text-slate-800">1. Vendor Expenditure Table</h3>
+                        <span className="text-[10px] bg-blue-100 text-blue-600 px-2 py-0.5 rounded font-black">PERCENTAGE SHARE INCLUDED</span>
                     </div>
                     <div className="overflow-x-auto">
                         <table className="w-full text-sm text-left text-slate-600">
@@ -239,15 +298,7 @@ export const Reports: React.FC = () => {
                                         <SortIcon active={vendorSort.field === 'name'} dir={vendorSort.dir} />
                                       </button>
                                     </th>
-                                    <th className="px-6 py-3">
-                                      <button 
-                                        onClick={() => toggleVendorSort('count')}
-                                        className="flex items-center gap-1 hover:text-blue-600 transition-colors uppercase font-bold mx-auto"
-                                      >
-                                        Trans. Count
-                                        <SortIcon active={vendorSort.field === 'count'} dir={vendorSort.dir} />
-                                      </button>
-                                    </th>
+                                    <th className="px-6 py-3 text-center font-bold">Trans.</th>
                                     <th className="px-6 py-3">
                                       <button 
                                         onClick={() => toggleVendorSort('amount')}
@@ -257,17 +308,23 @@ export const Reports: React.FC = () => {
                                         <SortIcon active={vendorSort.field === 'amount'} dir={vendorSort.dir} />
                                       </button>
                                     </th>
+                                    <th className="px-6 py-3 text-right font-bold">Share %</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {sortedVendors.length === 0 ? (
-                                    <tr><td colSpan={3} className="px-6 py-4 text-center text-slate-400">No data</td></tr>
+                                    <tr><td colSpan={4} className="px-6 py-4 text-center text-slate-400">No data</td></tr>
                                 ) : (
                                     sortedVendors.map((v, i) => (
                                         <tr key={i} className="border-b hover:bg-slate-50">
                                             <td className="px-6 py-3 font-medium text-slate-800">{v.name}</td>
                                             <td className="px-6 py-3 text-center">{v.count}</td>
-                                            <td className="px-6 py-3 text-right text-orange-600 font-mono">${v.amount.toFixed(2)}</td>
+                                            <td className="px-6 py-3 text-right text-orange-600 font-mono font-bold">${v.amount.toFixed(2)}</td>
+                                            <td className="px-6 py-3 text-right">
+                                                <span className="inline-block px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-xs font-bold">
+                                                    {reportData.totalExpenses > 0 ? ((v.amount / reportData.totalExpenses) * 100).toFixed(1) : 0}%
+                                                </span>
+                                            </td>
                                         </tr>
                                     ))
                                 ) }
@@ -276,6 +333,7 @@ export const Reports: React.FC = () => {
                                         <td className="px-6 py-3">TOTAL</td>
                                         <td className="px-6 py-3 text-center">{reportData.invoiceCount}</td>
                                         <td className="px-6 py-3 text-right">${reportData.totalExpenses.toFixed(2)}</td>
+                                        <td className="px-6 py-3 text-right">100%</td>
                                     </tr>
                                 )}
                             </tbody>
@@ -338,25 +396,62 @@ export const Reports: React.FC = () => {
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm h-80">
-                    <h3 className="text-sm font-semibold text-slate-500 uppercase mb-4">Visual Comparison</h3>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col h-[400px]">
+                    <h3 className="text-xs font-bold text-slate-500 uppercase mb-4 flex items-center gap-2">
+                        <TrendingDown className="w-4 h-4 text-blue-500" />
+                        Purchase vs Revenue
+                    </h3>
                     <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={[
                         { name: 'Revenue', amount: reportData.totalSales },
                         { name: 'COGS', amount: reportData.totalExpenses },
                         { name: 'Gross Profit', amount: reportData.netProfit },
                     ]}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="name" />
-                        <YAxis />
-                        <Tooltip formatter={(value) => `$${Number(value).toFixed(2)}`} />
-                        <Bar dataKey="amount" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={60} />
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                        <XAxis dataKey="name" axisLine={false} tickLine={false} />
+                        <YAxis axisLine={false} tickLine={false} />
+                        <Tooltip 
+                          cursor={{fill: '#f8fafc'}}
+                          contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
+                          formatter={(value) => [`$${Number(value).toFixed(2)}`, 'Amount']} 
+                        />
+                        <Bar dataKey="amount" fill="#3b82f6" radius={[6, 6, 0, 0]} barSize={50} />
                     </BarChart>
                     </ResponsiveContainer>
                 </div>
 
-                <div className="bg-slate-900 text-slate-100 p-6 rounded-xl shadow-lg flex flex-col h-80">
+                <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col h-[400px]">
+                    <h3 className="text-xs font-bold text-slate-500 uppercase mb-4 flex items-center gap-2">
+                        <PieChartIcon className="w-4 h-4 text-purple-500" />
+                        Vendor Distribution
+                    </h3>
+                    <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                            <Pie
+                                data={vendorStats}
+                                cx="50%"
+                                cy="50%"
+                                labelLine={false}
+                                outerRadius={80}
+                                fill="#8884d8"
+                                dataKey="amount"
+                                nameKey="name"
+                            >
+                                {vendorStats.map((entry, index) => (
+                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                ))}
+                            </Pie>
+                            <Tooltip 
+                                contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
+                                formatter={(value: number) => `$${value.toFixed(2)}`}
+                            />
+                            <Legend layout="horizontal" verticalAlign="bottom" align="center" wrapperStyle={{ fontSize: '10px', paddingTop: '10px' }} />
+                        </PieChart>
+                    </ResponsiveContainer>
+                </div>
+
+                <div className="bg-slate-900 text-slate-100 p-6 rounded-xl shadow-lg flex flex-col h-[400px]">
                     <div className="flex items-center gap-2 mb-4">
                     <div className="bg-purple-600 p-2 rounded-lg">
                         <Bot className="w-5 h-5 text-white" />
@@ -392,7 +487,7 @@ export const Reports: React.FC = () => {
                     <button
                     onClick={handleRunAi}
                     disabled={loadingAi}
-                    className="w-full py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-900 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2 h-11"
+                    className="w-full py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-900 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2 h-11 shadow-lg"
                     >
                     {loadingAi ? (
                         <><Loader2 className="w-4 h-4 animate-spin" /> Analyzing...</>
